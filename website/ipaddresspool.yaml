@@ -1,0 +1,12 @@
+# Prior to applying this file run this:
+# kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
+# AND
+# edit address pool accordingly
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.21.16.20-10.21.16.25

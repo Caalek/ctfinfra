@@ -1,0 +1,71 @@
+#!/bin/bash
+
+source `dirname "$0"`"/util"
+
+set -e
+
+PROJECT_ID=$(gcloud config get-value project)
+CLUSTER_NAME="kubectf-cluster"
+ZONE="europe-west1-b" # europe-west1-b this is actually the zone
+CLUSTER_VERSION="1.28.7-gke.1026000" 
+MACHINE_TYPE="n2-custom-8-131072-ext"
+DISK_SIZE="40"
+DISK_TYPE="pd-standard"
+NUM_NODES="1"
+VPC_NAME="kubectf-vpc-network"
+MAXIMUM_PODS="256"
+
+
+PROJECT_ID=`ask_with_default "Project ID" "$PROJECT_ID"`
+CLUSTER_NAME=`ask_with_default "Cluster Name" "$CLUSTER_NAME"`
+ZONE=`ask_with_default "Cluster Zone" "$ZONE"`
+CLUSTER_VERSION=`ask_with_default "Cluster Version" "$CLUSTER_VERSION"`
+MACHINE_TYPE=`ask_with_default "Machine Type" "$MACHINE_TYPE"`
+DISK_SIZE=`ask_with_default "Disk Size (GB)" "$DISK_SIZE"`
+DISK_TYPE=`ask_with_default "Disk Type (pd-standard or pd-ssd)" "$DISK_TYPE"`
+NUM_NODES=`ask_with_default "Number of Nodes" "$NUM_NODES"`
+VPC_NAME=`ask_with_default "VPC to create" "$VPC_NAME"`
+
+gcloud services enable compute.googleapis.com
+gcloud services enable container.googleapis.com
+
+gcloud compute networks create $VPC_NAME --subnet-mode=auto 
+
+gcloud container clusters create "$CLUSTER_NAME" \
+  --zone "$ZONE" \
+  --no-enable-basic-auth \
+  --cluster-version "$CLUSTER_VERSION" \
+  --release-channel "regular" \
+  --machine-type "$MACHINE_TYPE" \
+  --image-type "cos_containerd" \
+  --disk-type "$DISK_TYPE" \
+  --disk-size "$DISK_SIZE" \
+  --metadata disable-legacy-endpoints=true \
+  --workload-pool="$PROJECT_ID.svc.id.goog" \
+  --workload-metadata=GKE_METADATA \
+  --scopes "https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append" \
+  --master-ipv4-cidr "172.16.0.0/28" \
+  --num-nodes "$NUM_NODES" \
+  --enable-ip-alias \
+  --enable-private-nodes \
+  --preemptible \
+  --default-max-pods-per-node "$MAXIMUM_PODS" \
+  --enable-network-policy \
+  --no-enable-master-authorized-networks \
+  --addons HorizontalPodAutoscaling,GcePersistentDiskCsiDriver \
+  --max-surge-upgrade 1 \
+  --location-policy BALANCED \
+  --network ${VPC_NAME} \
+  --enable-shielded-nodes \
+  --max-unavailable-upgrade 0 \
+
+
+#gcloud compute routers create "kctf-${CLUSTER_NAME}-nat-router" --network="${NETWORK}" --region "${ZONE::${#ZONE}-2}" 
+
+#gcloud compute routers nats create "kctf-${CLUSTER_NAME}-nat-config" --router-region "${ZONE::${#ZONE}-2}" --router kctf-${CLUSTER_NAME}-nat-router --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips 
+
+
+gcloud container clusters --region "$ZONE" get-credentials "$CLUSTER_NAME"
+
+
+echo "After the cluster is created and you have deployed the kubectf app AND, the TLS certificate is created, you have to delet NAT router, to prevent nodes from accessing the internet"

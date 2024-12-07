@@ -1,0 +1,21 @@
+#!/bin/bash
+# https://cloud.google.com/community/tutorials/nginx-ingress-gke
+
+source `dirname "$0"`"/util"
+
+PROJECT_ID=$(gcloud config get-value project)
+KUBECTF_NAMESPACE="kubectf"
+
+
+
+# ask the questions
+KUBECTF_NAMESPACE=`ask_with_default "KubeCTF Instance (should be the same as in values.yaml)" "$KUBECTF_NAMESPACE"`
+SERVICE_ACCOUNT_CHALLENGE_MANAGER="gke-challenge-manager"
+
+
+gcloud iam service-accounts create "$SERVICE_ACCOUNT_CHALLENGE_MANAGER"
+
+gcloud iam service-accounts add-iam-policy-binding \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:$PROJECT_ID.svc.id.goog[$KUBECTF_NAMESPACE-management/challenge-manager]" \
+    "$SERVICE_ACCOUNT_CHALLENGE_MANAGER@$PROJECT_ID.iam.gserviceaccount.com"

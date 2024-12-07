@@ -1,0 +1,115 @@
+replicaCount: 1
+
+image:
+  repository: 
+  pullPolicy: Always 
+  tag: "ctfd"  
+  
+dockerSecret: 
+
+imagePullSecrets:
+  - name: dockerhub
+nameOverride: "ctfd"
+fullnameOverride: "ctfd"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "ctfd"
+
+podAnnotations: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+Host: 
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2048Mi
+  requests:
+    cpu: 800m
+    memory: 1024Mi
+
+mysql:
+  fullnameOverride: "ctfd-mysql-db"
+  auth:
+    database: ctfd
+    username: ctfd
+    password: ctfd
+    rootPassword: ctfd
+  primary:
+    persistence:
+      size: 500Mi
+  image:
+    debug: true
+    #startupProbe.enabled: false
+    #livenessProbe.enabled: false
+
+redis:
+  fullnameOverride: "ctfd-cache"
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 500Mi
+  replica:
+    replicaCount: 2
+    persistence:
+      size: 500Mi 
+    readinessProbe:
+      timeoutSeconds: 10
+  image:
+      debug: true
+
+
+
+
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+ctfdOptions: {}
+
+
+providerOptions:
+  gcp:
+    enabled: false
+    cloudSQLEnabled: false
+    cloudSQLName: 
+    projectId: 
+    region: 
+    dbAddress:
+  baremetal:
+    enabled: true
+    localPathProvisioner: true
+    storageClassName: standard
+

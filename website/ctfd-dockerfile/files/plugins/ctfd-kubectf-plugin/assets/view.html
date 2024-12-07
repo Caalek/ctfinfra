@@ -1,0 +1,26 @@
+{% extends 'challenge.html' %}
+{% block connection_info %}
+						<div class="mb-3 text-center deployment-actions">
+							<div class="alert alert-info"></div>
+							
+							<!-- i dont know how to do this better pls fix -->
+							<script>getDeployment("{{ challenge.template_name | safe}}")</script>
+                            
+							<span>
+								<button onclick="createDeployment(this)" data-deployment="{{ challenge.template_name | safe }}" class="create-chal btn btn-primary d-none">
+									<small style="color:white;"><i class="fas"></i> Fetch Instance</small>
+								</button>
+                                <button onclick="extendDeployment(this)" data-deployment="{{ challenge.template_name | safe }}" class='extend-chal btn btn-info d-none'>
+                                    <small style='color:white;'><i class="fas"></i> Extend Expiry</small>
+								</button>
+								<!-- <button onclick="resetDeployment(this)" data-deployment="{{ challenge.template_name | safe }}" class='btn btn-warning'>
+                                    <small style='color:white;'><i class="fas"></i> Reset Instance</small>
+								</button> -->
+								<button onclick="terminateDeployment(this)" data-deployment="{{ challenge.template_name | safe }}" class='terminate-chal btn btn-danger d-none'>
+                                    <small style='color:white;'><i class="fas"></i> Terminate</small>
+								</button>
+                            </span>
+                        </div>
+
+{% endblock %}
+			

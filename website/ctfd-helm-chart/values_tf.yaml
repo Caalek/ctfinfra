@@ -1,0 +1,139 @@
+# Default values for ctfd-website.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: europe-west1-docker.pkg.dev/project-id/repo-name/ctfd
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"  
+  
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: "ctfd-cloudsql-proxy"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "ctfd-cloudsql-proxy"
+
+podAnnotations: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: NodePort 
+  port: 443
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "ctfd-ip"
+  hosts:
+    - host: ctf.example.com
+      paths:
+        - path: /
+          pathType: Prefix #ImplementationSpecific
+  tls:
+    - secretName: cert
+      hosts:
+        - ctf.example.com
+
+Host: ctf.example.com
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    cpu: 1000m
+    memory: 2048Mi
+  requests:
+    cpu: 800m
+    memory: 1024Mi
+
+# Dependencies
+# https://github.com/bitnami/charts/tree/main/bitnami/mysql
+mysql:
+  deploy: false
+  fullnameOverride: "ctfd-mysql-db"
+  
+  auth:
+    database: ctfd
+    username: ctfd
+    password: ctfd
+    rootPassword: ctfd
+  primary:
+    persistence:
+      size: 500Mi
+  image:
+    debug: true
+    #startupProbe.enabled: false
+    #livenessProbe.enabled: false
+
+redis:
+  fullnameOverride: "ctfd-cache"
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 500Mi
+  replica:
+    replicaCount: 2
+    persistence:
+      size: 500Mi 
+  image:
+      debug: true
+
+
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+ctfdOptions: {}
+
+
+providerOptions:
+  gcp:
+    enabled: true
+    cloudSQLEnabled: true 
+    cloudSQLName: ctfd-database
+    projectId: 
+    region: europe-west1
+    dbAddress: 10.35.238.3
+
+
+  baremetal:
+    enabled: false
+    localPathProvisioner: true
+    storageClassName: standard
+

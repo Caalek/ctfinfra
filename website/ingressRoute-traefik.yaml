@@ -1,0 +1,20 @@
+# Edit Host('XXX') to match your domain
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ingress-ctfd
+  namespace: ctfd
+spec:
+  entryPoints:
+    - web
+    - websecure
+  tls:
+    certResolver: default
+  routes:
+    - match: Host(`ctf.qlm.my`)
+      kind: Rule
+      priority: 10
+      services:
+      - name: ctfd
+        namespace: ctfd
+        port: 8000

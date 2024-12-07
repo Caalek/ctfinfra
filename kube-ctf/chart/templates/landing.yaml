@@ -1,0 +1,72 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: landing
+  namespace: {{ .Release.Name }}-challenges
+  labels:
+    role: landing
+spec:
+  replicas: {{ (index  .Values "landing").replicas }}
+  selector:
+    matchLabels:
+      role: landing
+  template:
+    metadata:
+      labels:
+        role: landing
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      {{- if not .Values.googleProject }}
+      imagePullSecrets:
+      - name: dockerhub
+      {{- end }}
+      containers:
+      - name: web
+        {{- if .Values.googleProject }}
+        image: {{ .Values.googleRegion }}-docker.pkg.dev/{{ .Values.googleProject }}/{{ .Values.googleRepositoryName }}/services/landing:latest
+        {{- else }}
+        image: {{ .Values.dockerRepo }}:landing
+        {{- end }}
+
+        resources:
+{{ toYaml (index  .Values "landing").quota | indent 10 }}
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: landing
+  namespace: {{ .Release.Name }}-challenges
+  labels:
+    role: landing
+spec:
+  selector:
+    role: landing
+  ports:
+    - port: 80
+---
+# default ingressroute
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: landing
+  namespace: {{ .Release.Name }}-challenges
+spec:
+  entryPoints:
+    - web
+    - websecure
+  tls:
+    store:
+      name: {{ .Release.Name }}-cert-challenges
+  routes:
+    - match: HostRegexp(`{{ .Values.domain.challenges }}`, `{subdomain:[\w-]+}.{{ .Values.domain.challenges }}`)
+      kind: Rule
+      priority: 1
+      middlewares:
+      - name: hsts
+      services:
+      - name: landing
+        port: 80

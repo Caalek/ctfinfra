@@ -1,0 +1,152 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ctfd-website 
+  labels:
+    {{- include "ctfd-website.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ctfd-website.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ctfd-website.selectorLabels" . | nindent 8 }}
+        ctfd: ctfd
+        app: ctfd
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ctfd-website.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      automountServiceAccountToken: false
+      
+      initContainers:
+        #- name: wait-for-cache
+        #  image: busybox:1.28
+        #  command:
+        #    [
+        #      "sh",
+        #      "-c",
+        #      "until nc -z ctfd-cache-master:6379; do echo 'Waiting for cache'; sleep 0.1; done; echo 'Cache available'",
+        #    ]  
+      containers:
+        {{- if .Values.providerOptions.gcp.cloudSQLEnabled }}
+        - name: cloud-sql-proxy
+          # It is recommended to use the latest version of the Cloud SQL Auth Proxy
+          # Make sure to update on a regular schedule!
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+          args:
+            # If connecting from a VPC-native GKE cluster, you can use the
+            # following flag to have the proxy connect over private IP
+            - "--private-ip"
+
+            # Enable structured logging with LogEntry format:
+            - "--structured-logs"
+
+            # Replace DB_PORT with the port the proxy should listen on
+            #- "--port=3306"
+            - "project-id:europe-west1:ctfd-database"
+
+
+          securityContext:
+            # runAsUser: 2 # non-root user
+            # allowPrivilegeEscalation: false
+            runAsNonRoot: True
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+        {{- end }}
+
+        - env:
+            - name: WORKERS
+              value: "2"
+            - name: SECRET_KEY
+              value: "f4ba5acb2fc56601357ba88a91fc92ee"
+            {{- if .Values.providerOptions.gcp.cloudSQLEnabled }}
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: username
+            - name: DATABASE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: password
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: database
+            - name: DATABASE_ADDRESS
+              value: {{ .Values.providerOptions.gcp.dbAddress }}
+            - name: DATABASE_SCHEMA
+              value: 'mysql'
+            - name: DATABASE_BUILDER
+              value: 'True'
+
+            - name: "APPLICATION_URL"
+              value: "{{ printf "https://%s" .Values.Host }}"
+
+            {{- end }}
+
+          name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # volumeMounts:
+          #   - mountPath: /var/log/CTFd
+          #     name: ctf-pv-logs
+          #   - mountPath: /var/uploads
+          #     name: ctfd-pv-uploads
+      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

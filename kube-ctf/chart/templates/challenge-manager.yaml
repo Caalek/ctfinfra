@@ -1,0 +1,184 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+  labels:
+    kube-ctf.downunderctf.com/service: challenge-manager
+spec:
+  replicas: {{ (index  .Values "challenge-manager").replicas }}
+  selector:
+    matchLabels:
+      kube-ctf.downunderctf.com/service: challenge-manager
+  template:
+    metadata:
+      labels:
+        kube-ctf.downunderctf.com/service: challenge-manager
+    spec:
+      serviceAccountName: challenge-manager
+      {{- if not .Values.googleProject }}
+      imagePullSecrets:
+      - name: dockerhub
+      {{- end }}
+      containers:
+      - name: challenge-manager
+        {{- if .Values.googleProject }}
+        image: {{ .Values.googleRegion }}-docker.pkg.dev/{{ .Values.googleProject }}/{{ .Values.googleRepositoryName }}/services/challenge-manager:latest
+        {{- else }}
+        image: {{ .Values.dockerRepo }}:challenge-manager
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            port: 3000
+            path: /healthz
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: 3000
+            path: /healthz
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        env:
+          - name: KUBECTF_BASE_DOMAIN
+            value: {{ .Values.domain.challenges }}
+          - name: KUBECTF_API_DOMAIN
+            value: challenge-manager.{{ .Values.domain.management }}
+          - name: KUBECTF_NAMESPACE
+            value: {{ .Release.Name }}-challenges-isolated
+          - name: KUBECTF_MAX_OWNER_DEPLOYMENTS
+            value: "4"
+          - name: KUBECTF_REGISTRY_PREFIX
+            value: {{ (index  .Values "challenge-manager").registryPrefix }}
+          - name: KUBECTF_AUTH_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: challenge-manager
+                key: auth
+          - name: KUBECTF_CONTAINER_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: challenge-manager
+                key: container
+        resources:
+{{ toYaml (index  .Values "challenge-manager").quota | indent 10 }}
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+  labels:
+    kube-ctf.downunderctf.com/service: challenge-manager
+spec:
+  selector:
+    kube-ctf.downunderctf.com/service: challenge-manager
+  ports:
+    - port: 3000
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+  labels:
+    kube-ctf.downunderctf.com/service: challenge-manager
+spec:
+  entryPoints:
+    - web
+    - websecure
+  tls:
+    secretName: {{ .Release.Name }}-cert-management
+  routes:
+    - match: Host(`challenge-manager.{{ .Values.domain.management }}`)
+      kind: Rule
+      priority: 10
+      middlewares:
+      - name: hsts
+      services:
+      - name: challenge-manager
+        port: 3000
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-challenges-isolated
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - ingresses
+      - ingressroutes
+      - ingressroutetcps
+      - pods
+      - deployments
+      - services
+      - namespaces
+      - secrets
+      - networkpolicies
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-read-isolated-challenges
+rules:
+  - apiGroups:
+      - kube-ctf.downunderctf.com
+    resources:
+      - isolated-challenges
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-challenges-isolated
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: challenge-manager
+subjects:
+- kind: ServiceAccount
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-challenge-manager-read-isolated-challenges
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-read-isolated-challenges
+subjects:
+- kind: ServiceAccount
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: challenge-manager
+  namespace: {{ .Release.Name }}-management
+data:
+  auth: "{{ b64enc (index .Values "challenge-manager").authSecret }}"
+  container: "{{ b64enc (index .Values "challenge-manager").containerSecret }}"

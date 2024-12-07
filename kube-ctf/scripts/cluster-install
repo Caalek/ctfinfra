@@ -1,0 +1,50 @@
+#!/bin/bash
+
+kubectl create namespace traefik
+kubectl create namespace cert-manager
+kubectl label namespace cert-manager app.kubernetes.io/name=cert-manager   
+kubectl label namespace traefik app.kubernetes.io/name=traefik  
+
+# install helm stuff
+helm repo add jetstack https://charts.jetstack.io
+helm repo add traefik https://helm.traefik.io/traefik
+helm repo update
+
+# install the proxification stuff
+helm install cert-manager jetstack/cert-manager --namespace cert-manager \
+    --version v1.12.3 \
+    --set installCRDs=true
+helm install traefik traefik/traefik \
+    --namespace traefik \
+    --version v27.0.2 \
+    --create-namespace \
+    --values <(cat <<EOF
+installCRDs: true
+deployment:
+  kind: DaemonSet
+providers:
+  kubernetesCRD:
+    allowCrossNamespaces: true
+logs:
+  general:
+    # This is fatal since traefik spits errors whenever an instance is spun up
+    level: 'FATAL'
+service:
+  spec:
+    externalTrafficPolicy: 'Local'
+ports:
+  blockchain:
+    port: 8545
+    protocol: 'TCP'
+  tcpsecure:
+    port: 40000
+    protocol: 'TCP'
+    tls:
+      enabled: false
+      options:
+        alpnProtocols:
+          - http/1.1
+      certResolver: ''
+      domains: []
+EOF
+)

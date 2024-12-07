@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Name }}-management
+  labels:
+    app.kubernetes.io/name: kube-ctf
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admin
+---
+{{- $relname := .Release.Name -}}
+{{- range .Values.challengeNamespaces }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $relname }}-{{ . }}
+  labels:
+    app.kubernetes.io/name: kube-ctf
+    app.kubernetes.io/instance: {{ $relname }}
+    app.kubernetes.io/component: {{ . }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: secure-headers
+  namespace: {{ $relname }}-{{ . }}
+spec:
+  headers:
+    stsSeconds: 15552000
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+---
+{{- end }}

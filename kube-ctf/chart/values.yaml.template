@@ -1,0 +1,52 @@
+kube-janitor:
+  quota:
+    limits:
+      memory: 256Mi
+    requests:
+      cpu: 20m
+      memory: 256Mi
+
+challenge-manager:
+  authSecret: secret
+  containerSecret: secret
+  replicas: 1
+  quota:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 125m
+      memory: 256Mi
+
+landing:
+  replicas: 1
+  quota:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+
+domain:
+  challenges: 
+  management: 
+
+# google project ID
+#googleProject: example
+#googleRegion: australia-southeast1
+#googleRepositoryName: example
+
+# dockerhub repo
+dockerHub: true
+dockerRepo: 
+dockerSecret: 
+
+cert:
+  email: 
+  cfDNSToken: 
+
+# Don't change these unless you know what you're doing
+challengeNamespaces:
+  - challenges
+  - challenges-isolated

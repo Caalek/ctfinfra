@@ -1,0 +1,36 @@
+{{- $relname := .Release.Name -}}
+{{- range .Values.challengeNamespaces }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hsts
+  namespace: {{ $relname }}-{{ . }}
+spec:
+  headers:
+    stsSeconds: 15552000
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+---
+{{- end }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hsts
+  namespace: {{ .Release.Name }}-management
+spec:
+  headers:
+    stsSeconds: 15552000
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: traefik
+  labels:
+    app.kubernetes.io/name: kube-ctf
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  defaultCertificate:
+    secretName: {{ .Release.Name }}-cert-challenges
