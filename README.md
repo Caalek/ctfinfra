@@ -30,12 +30,25 @@ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storagec
 ```
 
 For cluster networking:
-```bash
-kubectl create ns kube-flannel
-kubectl label --overwrite ns kube-flannel pod-security.kubernetes.io/enforce=privileged
-helm repo add flannel https://flannel-io.github.io/flannel/
-helm install flannel --set podCidr="10.240.0.0/16" --namespace kube-flannel flannel/flannel
+> Flannel
+> ```bash
+> kubectl create ns kube-flannel
+> kubectl label --overwrite ns kube-flannel pod-security.kubernetes.io/enforce=privileged
+> helm repo add flannel https://flannel-io.github.io/flannel/
+> helm install flannel --set podCidr="10.240.0.0/16" --namespace kube-flannel flannel/flannel
+> ```
+> ***OR***
+>
+> Calico (preferred)
+>
+> **Make sure that cidr value from *custom-resources.yaml* matches the subnet used in `kubeadm init` command**
+> ```bash
+> kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml
+> curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml -O
+> kubectl create -f custom-resources.yaml
+> ```
 
+```
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
 kubectl apply -f ipaddresspool.yaml
 kubectl apply -f l2advertisment.yaml
