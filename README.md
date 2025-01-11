@@ -94,6 +94,11 @@ docker push repo:challenge-manager
 
 ```bash
 cd kube-ctf
+cp chart/values.yaml.template chart/values.yaml
+```
+
+Edit `chart/values.yaml` to match your configuration.
+```
 ./scripts/cluster-install
 helm install kubectf chart/
 ```
@@ -102,9 +107,12 @@ helm install kubectf chart/
 
 ```bash
 cd website
-docker build -t repo:ctfd ctfd-dockerfile
-docker push repo:ctfd
+docker build -t <repo>:ctfd ctfd-dockerfile
+docker push <repo>:ctfd
 kubectl create namespace ctfd
+```
+Edit `Makefile` to match your configuration.
+```
 make docker/build
 make docker/push
 make helm/deploy
