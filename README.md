@@ -118,6 +118,14 @@ make docker/push
 make helm/deploy
 ```
 
+> `cp ctfd-helm-chart/values_local.yaml ctfd-helm-chart/values.yaml` <- local deployment
+>
+> **OR**
+>
+> `cp ctfd-helm-chart/values_tf.yaml ctfd-helm-chart/values.yaml` <- cloud deployment
+
+Edit `ctfd-helm-chart/values.yaml` to match your configuration.
+
 Edit `website/ingressRoute-traefik.yaml` to match your domain: ``match: Host(`example.com`)``
 ```bash
 kubectl apply -f ingressRoute-traefik.yaml
