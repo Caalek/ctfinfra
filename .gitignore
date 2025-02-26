@@ -130,7 +130,7 @@ dmypy.json
 
 # Kubernetes
 *.tgz
-*.lock
+# *.lock
 *.tmp
 
 #Terraform
