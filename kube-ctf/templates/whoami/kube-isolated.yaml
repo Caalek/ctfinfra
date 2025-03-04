@@ -71,7 +71,7 @@ spec:
         - port: 80
           name: port-80
     ---
-    apiVersion: traefik.containo.us/v1alpha1
+    apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
       name: ingress-ctf-{{ deployment_id }}
